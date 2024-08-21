@@ -1,0 +1,61 @@
+M = 16;
+numSymbols = 1e5;
+EbN0_db = 0:2:20;
+EbN0 = EbN0_db - 10*log10(log2(M));
+
+numSNR = length(EbN0_db);
+SER = zeros(1, numSNR);
+
+% Defining all parameters
+gainImbalance = 0.1; % corrected typo
+phaseMismatch = 0.05;
+dcOffsetI = 0.05;
+dcOffsetQ = 0.05;
+
+for i = 1:numSNR
+   dataSymbols = randi([0 M-1], numSymbols, 1);
+   
+   % QAM modulation
+   modulatedSignal = qammod(dataSymbols, M, 'UnitAveragePower', true);
+   
+   % Apply gain imbalance
+   I = real(modulatedSignal);
+   Q = imag(modulatedSignal);
+   receivedSignal = (1 + gainImbalance)*I + 1i*(1 - gainImbalance)*Q;
+   
+   % Apply phase mismatch
+   receivedSignal = receivedSignal .* exp(1i * phaseMismatch);
+   
+   % Apply DC Offsets
+   receivedSignal = receivedSignal + (dcOffsetI) + (1i * dcOffsetQ);
+   
+   % Add AWGN
+   receivedSignal = awgn(receivedSignal, EbN0_db(i), 'measured');
+   
+   % QAM Demodulation
+   demodulatedSignal = qamdemod(receivedSignal, M, 'UnitAveragePower', true);
+   
+   % Calculate SER
+   SER(i) = sum(dataSymbols ~= demodulatedSignal) / numSymbols;
+end
+
+% Plotting
+figure;
+semilogy(EbN0_db, SER, 'b-o'); % using EbN0_db instead of EbN0
+title('SER vs E_b/N_0 for 16-QAM with Receiver Impairments');
+xlabel('E_b/N_0 (dB)'); % Updated for clarity
+ylabel('Symbol Error Rate (SER)');
+grid on;
+
+% Displaying results for each SNR point
+fprintf('SNR (dB)   SER\n');
+fprintf('--------   ------\n');
+
+for j = 1:numSNR
+   fprintf('%8.2f   %e\n', EbN0_db(j), SER(j)); % replaced i with j
+end
+
+% Plotting constellation diagram for highest SNR point
+scatterplot(receivedSignal);
+title('Received Signal Constellation with Receiver Impairments (SNR = 20 dB)');
+grid on;
