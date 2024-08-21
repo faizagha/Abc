@@ -1,0 +1,83 @@
+% Parameters
+numBits = 20; % Number of bits
+chipRate = 10; % Number of chips per bit
+snr = 10; % Signal-to-noise ratio in dB
+fs = 1e3; % Sampling frequency in Hz
+
+% Generate random bits
+dataBits = randi([0 1], numBits, 1);
+
+% BPSK Modulation
+modulatedData = 2*dataBits - 1; % BPSK mapping (0 -> -1, 1 -> 1)
+
+% Generate PN Sequence
+pnSequence = randi([0 1], numBits*chipRate, 1);
+pnSequence = pnSequence*2 - 1; % Convert to bipolar (+1, -1)
+
+% Spread the Signal
+spreadSignal = repelem(modulatedData, chipRate) .* pnSequence;
+
+% Transmit over AWGN channel
+receivedSignal = awgn(spreadSignal, snr, 'measured');
+
+% Despread the Signal
+despreadSignal = receivedSignal .* pnSequence;
+despreadBits = sum(reshape(despreadSignal, chipRate, numBits), 1)' / chipRate;
+
+% Demodulate the Signal
+receivedBits = despreadBits > 0;
+
+% Calculate and display BER
+BER_DSSS = sum(dataBits ~= receivedBits) / numBits;
+fprintf('DSSS BER: %e\n', BER_DSSS);
+
+% Plotting
+figure;
+
+% Original 20-bit sequence
+subplot(3, 2, 1);
+stem(dataBits, 'filled');
+title('Original 20-bit Sequence');
+xlabel('Bit Index');
+ylabel('Bit Value');
+grid on;
+
+% BPSK modulated signal
+subplot(3, 2, 2);
+plot(repelem(modulatedData, chipRate));
+title('BPSK Modulated Signal');
+xlabel('Sample Index');
+ylabel('Amplitude');
+grid on;
+
+% PN Sequence
+subplot(3, 2, 3);
+plot(pnSequence);
+title('PN Sequence');
+xlabel('Sample Index');
+ylabel('Amplitude');
+grid on;
+
+% Spread Spectrum Signal
+subplot(3, 2, 4);
+plot(spreadSignal);
+title('Spread Spectrum Signal');
+xlabel('Sample Index');
+ylabel('Amplitude');
+grid on;
+
+% Received Signal with noise
+subplot(3, 2, 5);
+plot(receivedSignal);
+title('Received Signal with AWGN');
+xlabel('Sample Index');
+ylabel('Amplitude');
+grid on;
+
+% Despread Signal
+subplot(3, 2, 6);
+plot(despreadBits);
+title('Despread Signal');
+xlabel('Bit Index');
+ylabel('Amplitude');
+grid on;
